@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+advanced
+advanced.c
+basic
+basic.c
+.vscode
