@@ -1,7 +1,74 @@
 #ifndef _LITTERBIN_H_
 #define _LITTERBIN_H_
 
-#include "../../cSuite.h"
+#include <stdlib.h>
+#include <setjmp.h>
+#include <stdint.h>
+
+/* TODO MAKE INTO A MODULE */
+        /** @param bool -> A 'big' enough size to hold both 1 and 0 **/
+        typedef unsigned char bool;
+        #define true 1
+        #define false 0
+
+/* TODO MAKE INTO A MODULE */
+        #define __THROW_THE_TRASH_OUT true
+
+        /* Find C version for declaring cross version implementations */
+        #if defined(__STDC__)
+            #if defined(__STDC_VERSION__)
+                #if(__STDC_VERSION__ >= 201112L)
+                    #define __VERSION "C11"
+                #elif(__STDC_VERSION__ >= 199901L)
+                    #define __VERSION "C99"
+                #else
+                    #define __VERSION "C90"
+                #endif
+            #else
+                #define __VERSION "C89"
+            #endif
+        #elif defined(_MSC_VER)
+            /* Assume we are running MSVC, that defaults to c90 */
+            #define __VERSION "C90"
+        #endif
+
+        /* Windows */
+        #if _WIN64
+            #define __ENVIRONMENT_WIN_64
+            #define __MAX_UINT (18446744073709551615UL)
+        #elif _WIN32
+            #define __ENVIRONMENT_WIN_32
+            #define __MAX_UINT (4294967295U)
+
+        /* GCC */
+        #elif __x86_64__ || __ppc64__
+            #define __ENVIRONMENT_NIX_64
+            #define __MAX_UINT (18446744073709551615UL)
+        #elif
+            #define __ENVIRONMENT_NIX_32
+            #define __MAX_UINT (4294967295U)
+
+        /* Mac OS */
+        #elif __APPLE__
+            #define __ENVIRONMENT_APPLE_64
+            #define __MAX_UINT (18446744073709551615UL)
+        #endif
+
+/* TODO MAKE INTO A MODULE */
+        /**
+         * @func: _simple_integer_hash
+         * @desc: Performs integer hashing
+         * @param ptr -> The pointer to return a hash of
+         * @return The hashed integer
+         **/
+        size_t _simple_integer_hash(void *ptr);
+
+        /** 32 bits hash **/
+        size_t _32bit_integer_hash(void *ptr);
+
+        /** 64 bits hash **/
+        size_t _64bit_integer_hash(void *ptr);
+
 
 /**
  * @struct: _litter
@@ -59,21 +126,21 @@ _litterbin bin;
  * @param bin -> The litterbin to use
  * @param stack_base -> 'argc' in most cases
  **/
-__export void _litterbin_new(_litterbin *bin, void *stack_base);
+void _litterbin_new(_litterbin *bin, void *stack_base);
 
 /**
  * @func: _litterbin_terminate
  * @desc: Sweeps for the remaining elements and stops the collector
  * @param bin -> The litterbin to stop
  **/
-__export void _litterbin_terminate(_litterbin *bin);
+void _litterbin_terminate(_litterbin *bin);
 
 /**
  * @func: _litterbin_collect
  * @desc: Performs a garbage collection on the bin elements
  * @param bin -> The litterbin to perform a garbage collection on
  **/
-__export void _litterbin_collect(_litterbin *bin);
+void _litterbin_collect(_litterbin *bin);
 
 
 /**
@@ -83,7 +150,7 @@ __export void _litterbin_collect(_litterbin *bin);
  * @param size -> The size of the memory block to allocate
  * @return The newly create memory
  **/
-__export void *_litterbin_malloc(_litterbin *bin, size_t size);
+void *_litterbin_malloc(_litterbin *bin, size_t size);
 
 /**
  * @func: _litterbin_calloc
@@ -93,7 +160,7 @@ __export void *_litterbin_malloc(_litterbin *bin, size_t size);
  * @param size -> The size of each element
  * @return The newly created memory
  **/
-__export void *_litterbin_calloc(_litterbin *bin, size_t nitems, size_t size);
+void *_litterbin_calloc(_litterbin *bin, size_t nitems, size_t size);
 
 /**
  * @func: _litterbin_realloc
@@ -103,7 +170,7 @@ __export void *_litterbin_calloc(_litterbin *bin, size_t nitems, size_t size);
  * @param new_size -> The new size of the memory block
  * @return The realloced memory block
  **/
-__export void *_litterbin_realloc(_litterbin *bin, void *ptr, size_t new_size);
+void *_litterbin_realloc(_litterbin *bin, void *ptr, size_t new_size);
 
 /**
  * @func: _litterbin_free
@@ -111,7 +178,7 @@ __export void *_litterbin_realloc(_litterbin *bin, void *ptr, size_t new_size);
  * @param bin -> The litterbin to use
  * @param ptr -> The pointer to free of memory
  **/
-__export void _litterbin_free(_litterbin *bin, void *ptr);
+void _litterbin_free(_litterbin *bin, void *ptr);
 
 
 /**

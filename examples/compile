@@ -1,0 +1,4 @@
+#!/bin/sh
+
+gcc -std=c89 -O3 test.c ../src/litterbin.c
+./a.out

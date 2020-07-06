@@ -1,4 +1,47 @@
-#include "../../cSuite.h"
+#include "../headers/litterbin.h"
+
+/* TODO MAKE INTO A MODULE */
+        size_t _simple_integer_hash(void *ptr) {
+            size_t key = (size_t)ptr;
+
+            /* SIMPLE ROTATION */
+            key = ((key >> 16) ^ key) * 0x45d9f3b;
+            key = ((key >> 16) ^ key) * 0x45d9f3b;
+            key = (key >> 16) ^ key;
+
+            /* Knuth's Multiplicative Method */
+            return (key >> 3) * 2654435761;
+        }
+
+        size_t _32bit_integer_hash(void *ptr) {
+            size_t key = (size_t)ptr;
+
+            /* 32 BIT FUNCTION */
+            key = (key + 0x7ed55d16) + (key << 12);
+            key = (key ^ 0xc761c23c) ^ (key >> 19);
+            key = (key + 0x165667b1) + (key << 5);
+            key = (key + 0xd3a2646c) ^ (key << 9);
+            key = (key + 0xfd7046c5) + (key << 3);
+            key = (key ^ 0xb55a4f09) ^ (key >> 16);
+
+            /* Knuth's Multiplicative Method */
+            return (key >> 3) * 2654435761;
+        }
+
+        size_t _64bit_integer_hash(void *ptr) {
+            size_t key = (size_t)ptr;
+
+            /* 64 BIT FUNCTION */
+            key = (~key) + (key << 18);
+            key ^= (key >> 31);
+            key *= 21;
+            key ^= (key >> 11);
+            key += (key << 6);
+            key ^= (key >> 22);
+
+            /* Knuth's Multiplicative Method */
+            return (key >> 3) * 2654435761;
+        }
 
 void _litterbin_collect(_litterbin *bin) {
     _litterbin_mark(bin);
@@ -9,12 +52,14 @@ void _litterbin_collect(_litterbin *bin) {
 static void _memcpy(void *dest, void *src, size_t size) {
     char *csrc = (char*)src;
     char *cdest = (char*)dest;
-    for(size_t i = 0; i < size; i++) cdest[i] = csrc[i];
+    size_t i;
+    for(i = 0; i < size; i++) cdest[i] = csrc[i];
 }
 
 static void _memset(void *src, char ch, size_t size) {
     char *csrc = (char*)src;
-    for(size_t i = 0; i < size; i++) csrc[i] = ch;
+    size_t i;
+    for(i = 0; i < size; i++) csrc[i] = ch;
 }
 
 /* Flush the registers */
@@ -30,7 +75,8 @@ static void _mark_volatile_stack(_litterbin *bin) {
 }
 
 static void _mark_bin_garbage(_litterbin *bin, size_t value) {
-    for(size_t i = 0; i < bin->garbage[value].size / sizeof(void*); i++)
+    size_t i;
+    for(i = 0; i < bin->garbage[value].size / sizeof(void*); i++)
         _litterbin_iterate_mark(bin, ((void**)bin->garbage[value].ptr)[i]);
 }
 
@@ -39,7 +85,8 @@ static void _litterbin_mark(_litterbin *bin) {
     /* Now its still a thread local, stop-the-world iterator */
     if(bin->number_of_litter == 0) return;
 
-    for(size_t value = 0; value < bin->bin_size; value++) {
+    size_t value;
+    for(value = 0; value < bin->bin_size; value++) {
         if(bin->garbage[value].id == 0) continue;
         if(bin->garbage[value].marked) continue;
         if(bin->garbage[value].root) {
@@ -50,7 +97,8 @@ static void _litterbin_mark(_litterbin *bin) {
     }
 
     _mark_register_memory(bin);
-    _mark_volatile_stack(bin);
+    /* TODO MEMORY LAYOUT FUCKED -> FIX */
+    /* _mark_volatile_stack(bin); */
 }
 
 static void _litterbin_mark_stack(_litterbin *bin) {
@@ -61,13 +109,16 @@ static void _litterbin_mark_stack(_litterbin *bin) {
     if(ebp == esp) return;
 
     /* Mark all stack memory addresses as reachable */
-    if(esp > ebp)
-        for(void *ptr = esp; ptr >= ebp; ptr = ((char*)ptr) - sizeof(void*))
+    if(esp > ebp) {
+        void *ptr;
+        for(ptr = esp; ptr >= ebp; ptr = ((char*)ptr) - sizeof(void*))
             _litterbin_iterate_mark(bin, *((void**)ptr));
-
-    if(esp < ebp)
-        for(void *ptr = esp; ptr <= ebp; ptr = ((char*)ptr) + sizeof(void*))
+    }
+    if(esp < ebp) {
+        void *ptr;
+        for(ptr = esp; ptr <= ebp; ptr = ((char*)ptr) + sizeof(void*))
             _litterbin_iterate_mark(bin, *((void**)ptr));
+    }
 }
 
 static void _litterbin_iterate_mark(_litterbin *bin, void *ptr) {
@@ -125,7 +176,8 @@ static void *_resize_list_of(_litterbin *bin) {
 
 static size_t _count_unreachable_pointers(_litterbin *bin) {
     size_t counter = 0;
-    for(size_t value = 0; value < bin->bin_size; value++) {
+    size_t value;
+    for(value = 0; value < bin->bin_size; value++) {
         if(bin->garbage[value].id == 0
         || bin->garbage[value].marked
         || bin->garbage[value].root) continue;
@@ -136,7 +188,8 @@ static size_t _count_unreachable_pointers(_litterbin *bin) {
 
 static void _setup_freelist(_litterbin *bin) {
     size_t free_index = 0;
-    for(size_t value = 0; value < bin->bin_size; value++) {
+    size_t value;
+    for(value = 0; value < bin->bin_size; value++) {
         if(bin->garbage[value].id == 0
         || bin->garbage[value].marked
         || bin->garbage[value].root) continue;
@@ -148,14 +201,16 @@ static void _setup_freelist(_litterbin *bin) {
 }
 
 static void _unmark_values_for_collection(_litterbin *bin) {
-    for(size_t value = 0; value < bin->bin_size; value++) {
+    size_t value;
+    for(value = 0; value < bin->bin_size; value++) {
         if(bin->garbage[value].id == 0) continue;
         if(bin->garbage[value].marked) bin->garbage[value].marked = false;
     }
 }
 
 static void _free_unmarked_values(_litterbin *bin) {
-    for(size_t value = 0; value < bin->number_of_unreachable_elements; value++)
+    size_t value;
+    for(value = 0; value < bin->number_of_unreachable_elements; value++)
         if(bin->list_of_unreachable_elements[value].ptr)
             free(bin->list_of_unreachable_elements[value].ptr);
 }
@@ -206,7 +261,8 @@ static bool _litterbin_rehash(_litterbin *bin, size_t new_size) {
         return false;
     }
 
-    for(size_t value = 0; value < old_size; value++)
+size_t value;
+    for(value = 0; value < old_size; value++)
         if(old_items[value].id != 0)
             _litterbin_set_ptr(bin, old_items[value].ptr,
                 old_items[value].size, old_items[value].root);
@@ -298,7 +354,8 @@ static _litter *_litterbin_get(_litterbin *bin, void *ptr) {
 static void _litterbin_remove(_litterbin *bin, void *ptr) {
     if(bin->bin_size == 0) return;
 
-    for(size_t i = 0; i < bin->number_of_unreachable_elements; i++)
+    size_t i;
+    for(i = 0; i < bin->number_of_unreachable_elements; i++)
         if(bin->list_of_unreachable_elements[i].ptr == ptr)
             bin->list_of_unreachable_elements[i].ptr = NULL;
 
@@ -342,7 +399,7 @@ void _litterbin_new(_litterbin *bin, void *stack_base) {
     bin->bin_size = 0;
     bin->available_memory_slots = 0;
     bin->high_memory_bound = 0;
-    bin->low_memory_bound = __MAX_UINT;
+    bin->low_memory_bound = SIZE_MAX;
     bin->garbage = NULL;
     bin->list_of_unreachable_elements = NULL;
     bin->number_of_unreachable_elements = 0;
