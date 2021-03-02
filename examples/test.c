@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "../headers/litterbin.h"
+#include "../export/cLitterBin.h"
 
 int call_method(int *arr) {
     int i;

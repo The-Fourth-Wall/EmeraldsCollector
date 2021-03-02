@@ -1,4 +1,4 @@
-#include "../headers/litterbin.h"
+#include "headers/litterbin.h"
 
 /* TODO MAKE INTO A MODULE */
         size_t _simple_integer_hash(void *ptr) {

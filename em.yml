@@ -1,0 +1,12 @@
+name: cLitterBin
+version: 0.1.0
+
+dependencies:
+
+license: GPLv3
+
+application: make
+library: make lib
+postinstall: #
+test: make test
+clean: make clean

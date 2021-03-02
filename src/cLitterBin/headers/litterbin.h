@@ -7,9 +7,11 @@
 
 /* TODO MAKE INTO A MODULE */
         /** @param bool -> A 'big' enough size to hold both 1 and 0 **/
-        typedef unsigned char bool;
-        #define true 1
-        #define false 0
+        #ifndef bool
+            #define bool unsigned char
+            #define true 1
+            #define false 0
+        #endif
 
 /* TODO MAKE INTO A MODULE */
         #define __THROW_THE_TRASH_OUT true
@@ -44,7 +46,7 @@
         #elif __x86_64__ || __ppc64__
             #define __ENVIRONMENT_NIX_64
             #define __MAX_UINT (18446744073709551615UL)
-        #elif
+        #elif __i386__
             #define __ENVIRONMENT_NIX_32
             #define __MAX_UINT (4294967295U)
 
@@ -144,7 +146,7 @@ void _litterbin_collect(_litterbin *bin);
 
 
 /**
- * @func: _litterbin_malloc
+ * @func: mallocation_on_litterbin
  * @desc: Performs a malloc operation and saves the pointer on the litterbin
  * @param bin -> The litterbin to use
  * @param size -> The size of the memory block to allocate
