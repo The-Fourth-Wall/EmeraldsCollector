@@ -3,4 +3,6 @@
 
 #include "../src/cLitterBin.h"
 
+#include <stdio.h>
+
 #endif

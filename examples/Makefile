@@ -9,7 +9,7 @@ WARNINGS =
 UNUSED_WARNINGS = -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-extra-semi
 REMOVE_WARNINGS =
 
-INPUT = $(NAME).c
+INPUT = $(NAME).c ../export/*.so
 OUTPUT = a.out
 
 all: default

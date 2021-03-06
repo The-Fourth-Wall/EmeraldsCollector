@@ -43,7 +43,7 @@
             return (key >> 3) * 2654435761;
         }
 
-void litterbin_collect(litterbin *bin) {
+void litterbin_collect(struct litterbin *bin) {
     litterbin_mark(bin);
     litterbin_sweep(bin);
 }
@@ -63,24 +63,24 @@ static void _memset(void *src, char ch, size_t size) {
 }
 
 /* Flush the registers */
-static void litterbin_mark_register_memory(litterbin *bin) {
+static void litterbin_mark_register_memory(struct litterbin *bin) {
     jmp_buf regs;
-    setjmp(regs);
+    int point = setjmp(regs);
     _memset(&regs, 0, sizeof(jmp_buf));
 }
 
-static void litterbin_mark_volatile_stack(litterbin *bin) {
-    void (*volatile mark_stack)(litterbin*) = litterbin_mark_stack;
+static void litterbin_mark_volatile_stack(struct litterbin *bin) {
+    void (*volatile mark_stack)(struct litterbin*) = litterbin_mark_stack;
     mark_stack(bin);
 }
 
-static void litterbin_mark_bin_garbage(litterbin *bin, size_t value) {
+static void litterbin_mark_bin_garbage(struct litterbin *bin, size_t value) {
     size_t i;
     for(i = 0; i < bin->garbage[value].size / sizeof(void*); i++)
         litterbin_iterate_mark(bin, ((void**)bin->garbage[value].ptr)[i]);
 }
 
-static void litterbin_mark(litterbin *bin) {
+static void litterbin_mark(struct litterbin *bin) {
     /* TODO CONCURRENT IMPLEMENTATION */
     /* Now its still a thread local, stop-the-world iterator */
     if(bin->number_of_litter == 0) return;
@@ -101,7 +101,7 @@ static void litterbin_mark(litterbin *bin) {
     /* litterbin_mark_volatile_stack(bin); */
 }
 
-static void litterbin_mark_stack(litterbin *bin) {
+static void litterbin_mark_stack(struct litterbin *bin) {
     /* Use a variable declaration to find the top of the stack */
     void *stack_top;
     void *esp = &stack_top;
@@ -121,7 +121,7 @@ static void litterbin_mark_stack(litterbin *bin) {
     }
 }
 
-static void litterbin_iterate_mark(litterbin *bin, void *ptr) {
+static void litterbin_iterate_mark(struct litterbin *bin, void *ptr) {
     /* Recursively mark all nested pointers */
     if((size_t)ptr < bin->low_memory_bound
     || (size_t)ptr > bin->high_memory_bound) return;
@@ -149,8 +149,8 @@ static void litterbin_iterate_mark(litterbin *bin, void *ptr) {
     }
 }
 
-static void litterbin_zero_out_memory_subtrees(litterbin *bin, size_t value) {
-    _memset(&bin->garbage[value], 0, sizeof(litterbin_litter));
+static void litterbin_zero_out_memory_subtrees(struct litterbin *bin, size_t value) {
+    _memset(&bin->garbage[value], 0, sizeof(struct litterbin_litter));
     size_t index = value;
 
     while(true) {
@@ -160,8 +160,8 @@ static void litterbin_zero_out_memory_subtrees(litterbin *bin, size_t value) {
         if(sub_id != 0
         && litterbin_validate_item(bin, sub_index, sub_id) > 0) {
             _memcpy(&bin->garbage[index],
-                &bin->garbage[sub_index], sizeof(litterbin_litter));
-            _memset(&bin->garbage[sub_index], 0, sizeof(litterbin_litter));
+                &bin->garbage[sub_index], sizeof(struct litterbin_litter));
+            _memset(&bin->garbage[sub_index], 0, sizeof(struct litterbin_litter));
             index = sub_index;
         }
         else break;
@@ -169,12 +169,12 @@ static void litterbin_zero_out_memory_subtrees(litterbin *bin, size_t value) {
     bin->number_of_litter--;
 }
 
-static void *litterbin_resize_list_of(litterbin *bin) {
+static void *litterbin_resize_list_of(struct litterbin *bin) {
     return realloc(bin->list_of_unreachable_elements,
-        sizeof(litterbin_litter) * bin->number_of_unreachable_elements);
+        sizeof(struct litterbin_litter) * bin->number_of_unreachable_elements);
 }
 
-static size_t litterbin_count_unreachable_pointers(litterbin *bin) {
+static size_t litterbin_count_unreachable_pointers(struct litterbin *bin) {
     size_t counter = 0;
     size_t value;
     for(value = 0; value < bin->bin_size; value++) {
@@ -186,7 +186,7 @@ static size_t litterbin_count_unreachable_pointers(litterbin *bin) {
     return counter;
 }
 
-static void litterbin_setup_freelist(litterbin *bin) {
+static void litterbin_setup_freelist(struct litterbin *bin) {
     size_t free_index = 0;
     size_t value;
     for(value = 0; value < bin->bin_size; value++) {
@@ -200,7 +200,7 @@ static void litterbin_setup_freelist(litterbin *bin) {
     }
 }
 
-static void litterbin_unmark_values_for_collection(litterbin *bin) {
+static void litterbin_unmark_values_for_collection(struct litterbin *bin) {
     size_t value;
     for(value = 0; value < bin->bin_size; value++) {
         if(bin->garbage[value].id == 0) continue;
@@ -208,7 +208,7 @@ static void litterbin_unmark_values_for_collection(litterbin *bin) {
     }
 }
 
-static void litterbin_free_unmarked_values(litterbin *bin) {
+static void litterbin_free_unmarked_values(struct litterbin *bin) {
     size_t value;
     for(value = 0; value < bin->number_of_unreachable_elements; value++)
         if(bin->list_of_unreachable_elements[value].ptr)
@@ -216,7 +216,7 @@ static void litterbin_free_unmarked_values(litterbin *bin) {
 }
 
 /* Reallocate the freelist from the previous sweep, reset the freenum */
-static void litterbin_sweep(litterbin *bin) {
+static void litterbin_sweep(struct litterbin *bin) {
     if(bin->number_of_litter == 0) return;
     bin->number_of_unreachable_elements = litterbin_count_unreachable_pointers(bin);
     bin->list_of_unreachable_elements = litterbin_resize_list_of(bin);
@@ -232,7 +232,7 @@ static void litterbin_sweep(litterbin *bin) {
     bin->number_of_unreachable_elements = 0;
 }
 
-static bool litterbin_decrease_size(litterbin *bin) {
+static bool litterbin_decrease_size(struct litterbin *bin) {
     bin->available_memory_slots = bin->number_of_litter
                                 + bin->number_of_litter / 1.5 + 1;
     size_t new_size = (size_t)((double)(bin->number_of_litter + 1) * 1.5);
@@ -240,19 +240,19 @@ static bool litterbin_decrease_size(litterbin *bin) {
     return ((size_t)(old_size / 1.5) < new_size) ? litterbin_rehash(bin, new_size) : true;
 }
 
-static bool litterbin_increase_size(litterbin *bin) {
+static bool litterbin_increase_size(struct litterbin *bin) {
     size_t new_size = (size_t)((double)(bin->number_of_litter + 1) * 1.5);
     size_t old_size = bin->bin_size;
     return (old_size * 1.5 < new_size) ? litterbin_rehash(bin, new_size) : true;
 }
 
-static bool litterbin_rehash(litterbin *bin, size_t new_size) {
+static bool litterbin_rehash(struct litterbin *bin, size_t new_size) {
     /* Rehash all values of the collector to a new bigger sized one */
-    litterbin_litter *old_items = bin->garbage;
+    struct litterbin_litter *old_items = bin->garbage;
     size_t old_size = bin->bin_size;
 
     bin->bin_size = new_size;
-    bin->garbage = calloc(bin->bin_size, sizeof(litterbin_litter));
+    bin->garbage = calloc(bin->bin_size, sizeof(struct litterbin_litter));
 
     if(bin->garbage == NULL) {
         /* In case the allocation fails, we restore the items */
@@ -271,13 +271,13 @@ size_t value;
     return true;
 }
 
-static size_t litterbin_validate_item(litterbin *bin, size_t index, size_t id) {
+static size_t litterbin_validate_item(struct litterbin *bin, size_t index, size_t id) {
     size_t value = index - (id - 1);
     if(value < 0) return value + bin->bin_size;
     return value;
 }
 
-static void litterbin_set(litterbin *bin, void *ptr, size_t size, bool root) {
+static void litterbin_set(struct litterbin *bin, void *ptr, size_t size, bool root) {
     /* Increase the total items */
     bin->number_of_litter++;
 
@@ -289,7 +289,7 @@ static void litterbin_set(litterbin *bin, void *ptr, size_t size, bool root) {
         ((size_t)ptr) : bin->low_memory_bound;
     
     if(litterbin_increase_size(bin)) {
-        /*  Add to the list and run the litterbin */
+        /*  Add to the list and run the struct litterbin */
         litterbin_set_ptr(bin, ptr, size, root);
 
         if(bin->number_of_litter > bin->available_memory_slots)
@@ -302,8 +302,8 @@ static void litterbin_set(litterbin *bin, void *ptr, size_t size, bool root) {
     return;
 }
 
-static void litterbin_set_ptr(litterbin *bin, void *ptr, size_t size, bool root) {
-    litterbin_litter item;
+static void litterbin_set_ptr(struct litterbin *bin, void *ptr, size_t size, bool root) {
+    struct litterbin_litter item;
     size_t value = litterbin_hash(ptr) % bin->bin_size;
     size_t index = 0;
 
@@ -324,7 +324,7 @@ static void litterbin_set_ptr(litterbin *bin, void *ptr, size_t size, bool root)
 
         size_t ptr_location = litterbin_validate_item(bin, value, id);
         if(index >= ptr_location) {
-            litterbin_litter temp = bin->garbage[value];
+            struct litterbin_litter temp = bin->garbage[value];
             bin->garbage[value] = item;
             item = temp;
             index = ptr_location;
@@ -334,7 +334,7 @@ static void litterbin_set_ptr(litterbin *bin, void *ptr, size_t size, bool root)
     }
 }
 
-static litterbin_litter *litterbin_get(litterbin *bin, void *ptr) {
+static struct litterbin_litter *litterbin_get(struct litterbin *bin, void *ptr) {
     size_t value = litterbin_hash(ptr) % bin->bin_size;
     size_t index = 0;
 
@@ -351,7 +351,7 @@ static litterbin_litter *litterbin_get(litterbin *bin, void *ptr) {
     return NULL;
 }
 
-static void litterbin_remove(litterbin *bin, void *ptr) {
+static void litterbin_remove(struct litterbin *bin, void *ptr) {
     if(bin->bin_size == 0) return;
 
     size_t i;
@@ -366,7 +366,7 @@ static void litterbin_remove(litterbin *bin, void *ptr) {
         if(id == 0 || litterbin_validate_item(bin, value, id) < index)
             return;
         if(bin->garbage[value].ptr == ptr) {
-            _memset(&bin->garbage[value], 0, sizeof(litterbin_litter));
+            _memset(&bin->garbage[value], 0, sizeof(struct litterbin_litter));
             index = value;
 
             while(true) {
@@ -376,8 +376,8 @@ static void litterbin_remove(litterbin *bin, void *ptr) {
                 if(sub_id != 0
                 && litterbin_validate_item(bin, sub_index, sub_id) > 0) {
                     _memcpy(&bin->garbage[index],
-                        &bin->garbage[sub_index], sizeof(litterbin_litter));
-                    _memset(&bin->garbage[sub_index], 0, sizeof(litterbin_litter));
+                        &bin->garbage[sub_index], sizeof(struct litterbin_litter));
+                    _memset(&bin->garbage[sub_index], 0, sizeof(struct litterbin_litter));
                     index = sub_index;
                 }
                 else break;
@@ -393,7 +393,7 @@ static void litterbin_remove(litterbin *bin, void *ptr) {
     litterbin_decrease_size(bin);
 }
 
-void litterbin_new(litterbin *bin, void *stack_base) {
+void litterbin_new(struct litterbin *bin, void *stack_base) {
     bin->bottom_of_stack = stack_base;
     bin->number_of_litter = 0;
     bin->bin_size = 0;
@@ -405,29 +405,29 @@ void litterbin_new(litterbin *bin, void *stack_base) {
     bin->number_of_unreachable_elements = 0;
 }
 
-void litterbin_terminate(litterbin *bin) {
+void litterbin_terminate(struct litterbin *bin) {
     litterbin_sweep(bin);
     free(bin->garbage);
     free(bin->list_of_unreachable_elements);
 }
 
-void *litterbin_malloc(litterbin *bin, size_t size) {
+void *litterbin_malloc(struct litterbin *bin, size_t size) {
     int state = 0;
     void *ptr = malloc(size);
     if(ptr != NULL) litterbin_set(bin, ptr, size, state);
     return ptr;
 }
 
-void *litterbin_calloc(litterbin *bin, size_t nitems, size_t size) {
+void *litterbin_calloc(struct litterbin *bin, size_t nitems, size_t size) {
     int state = 0;
     void *ptr = calloc(nitems, size);
     if(ptr != NULL) litterbin_set(bin, ptr, nitems * size, state);
     return ptr;
 }
 
-void *litterbin_realloc(litterbin *bin, void *ptr, size_t new_size) {
+void *litterbin_realloc(struct litterbin *bin, void *ptr, size_t new_size) {
     /* Reallocate memory for the new pointer */
-    litterbin_litter *item_to_realloc;
+    struct litterbin_litter *item_to_realloc;
     void *new_ptr = realloc(ptr, new_size);
 
     if(new_ptr == NULL) {
@@ -455,8 +455,8 @@ void *litterbin_realloc(litterbin *bin, void *ptr, size_t new_size) {
     return NULL;
 }
 
-void litterbin_free(litterbin *bin, void *ptr) {
-    litterbin_litter *ptr_to_free = litterbin_get(bin, ptr);
+void litterbin_free(struct litterbin *bin, void *ptr) {
+    struct litterbin_litter *ptr_to_free = litterbin_get(bin, ptr);
     if(ptr_to_free) {
         free(ptr);
         litterbin_remove(bin, ptr);

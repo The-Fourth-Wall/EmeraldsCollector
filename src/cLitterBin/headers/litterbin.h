@@ -81,13 +81,13 @@
  * @param id -> A unique hash value that works as an item id
  * @param size -> The size of the element stored as litter
  **/
-typedef struct litterbin_litter {
+struct litterbin_litter {
     void *ptr;
     bool marked;
     bool root;
     size_t id;
     size_t size;
-} litterbin_litter;
+};
 
 /**
  * @struct: litterbin
@@ -103,9 +103,9 @@ typedef struct litterbin_litter {
  * @param bottom_of_stack -> The variable holding the current stack 'esp'
  * @param number_of_unreachable_elements -> The count of items to be deleted
  **/
-typedef struct litterbin {
-    litterbin_litter *garbage;
-    litterbin_litter *list_of_unreachable_elements;
+struct litterbin {
+    struct litterbin_litter *garbage;
+    struct litterbin_litter *list_of_unreachable_elements;
     size_t bin_size;
     size_t number_of_litter;
     size_t available_memory_slots;
@@ -113,12 +113,7 @@ typedef struct litterbin {
     size_t low_memory_bound;
     void *bottom_of_stack;
     size_t number_of_unreachable_elements;
-} litterbin;
-
-/* 'bin' is the global element used to save stuff */
-/* We declare it out of the users scope so that we dont need to
-    pass it as a parameter due to it being sort of a singleton */
-litterbin bin;
+};
 
 /**
  * @func: litterbin_new
@@ -128,21 +123,21 @@ litterbin bin;
  * @param bin -> The litterbin to use
  * @param stack_base -> 'argc' in most cases
  **/
-void litterbin_new(litterbin *bin, void *stack_base);
+void litterbin_new(struct litterbin *bin, void *stack_base);
 
 /**
  * @func: litterbin_terminate
  * @desc: Sweeps for the remaining elements and stops the collector
  * @param bin -> The litterbin to stop
  **/
-void litterbin_terminate(litterbin *bin);
+void litterbin_terminate(struct litterbin *bin);
 
 /**
  * @func: litterbin_collect
  * @desc: Performs a garbage collection on the bin elements
  * @param bin -> The litterbin to perform a garbage collection on
  **/
-void litterbin_collect(litterbin *bin);
+void litterbin_collect(struct litterbin *bin);
 
 
 /**
@@ -152,7 +147,7 @@ void litterbin_collect(litterbin *bin);
  * @param size -> The size of the memory block to allocate
  * @return The newly create memory
  **/
-void *litterbin_malloc(litterbin *bin, size_t size);
+void *litterbin_malloc(struct litterbin *bin, size_t size);
 
 /**
  * @func: litterbin_calloc
@@ -162,7 +157,7 @@ void *litterbin_malloc(litterbin *bin, size_t size);
  * @param size -> The size of each element
  * @return The newly created memory
  **/
-void *litterbin_calloc(litterbin *bin, size_t nitems, size_t size);
+void *litterbin_calloc(struct litterbin *bin, size_t nitems, size_t size);
 
 /**
  * @func: litterbin_realloc
@@ -172,7 +167,7 @@ void *litterbin_calloc(litterbin *bin, size_t nitems, size_t size);
  * @param new_size -> The new size of the memory block
  * @return The realloced memory block
  **/
-void *litterbin_realloc(litterbin *bin, void *ptr, size_t new_size);
+void *litterbin_realloc(struct litterbin *bin, void *ptr, size_t new_size);
 
 /**
  * @func: litterbin_free
@@ -180,7 +175,7 @@ void *litterbin_realloc(litterbin *bin, void *ptr, size_t new_size);
  * @param bin -> The litterbin to use
  * @param ptr -> The pointer to free of memory
  **/
-void litterbin_free(litterbin *bin, void *ptr);
+void litterbin_free(struct litterbin *bin, void *ptr);
 
 
 /**
@@ -219,7 +214,7 @@ static void _memcpy(void *dest, void *src, size_t size);
  * @desc: Flush all used registers to zero to prepare them for marking
  * @param bin -> The litterbin to use
  **/
-static void litterbin_mark_register_memory(litterbin *bin);
+static void litterbin_mark_register_memory(struct litterbin *bin);
 
 /**
  * @func: litterbin_mark_volatile_stack
@@ -230,7 +225,7 @@ static void litterbin_mark_register_memory(litterbin *bin);
  * 
  * @param bin -> The litterbin to use
  **/
-static void litterbin_mark_volatile_stack(litterbin *bin);
+static void litterbin_mark_volatile_stack(struct litterbin *bin);
 
 /**
  * @func: litterbin_mark_bin_garbage
@@ -238,7 +233,7 @@ static void litterbin_mark_volatile_stack(litterbin *bin);
  * @param bin -> The litterbin to use
  * @param value -> The index to start iterating from
  **/
-static void litterbin_mark_bin_garbage(litterbin *bin, size_t value);
+static void litterbin_mark_bin_garbage(struct litterbin *bin, size_t value);
 
 /**
  * @func: litterbin_mark
@@ -247,7 +242,7 @@ static void litterbin_mark_bin_garbage(litterbin *bin, size_t value);
  * 
  * @param bin -> The litterbin to use
  **/
-static void litterbin_mark(litterbin *bin);
+static void litterbin_mark(struct litterbin *bin);
 
 /**
  * @func: litterbin_mark_stack
@@ -257,7 +252,7 @@ static void litterbin_mark(litterbin *bin);
  * 
  * @param bin -> The litterbin to use
  **/
-static void litterbin_mark_stack(litterbin *bin);
+static void litterbin_mark_stack(struct litterbin *bin);
 
 /**
  * @func: litterbin_iterate_mark
@@ -265,7 +260,7 @@ static void litterbin_mark_stack(litterbin *bin);
  * @param bin -> The litterbin to use
  * @param ptr -> The pointer to mark
  **/
-static void litterbin_iterate_mark(litterbin *bin, void *ptr);
+static void litterbin_iterate_mark(struct litterbin *bin, void *ptr);
 
 
 /**
@@ -274,7 +269,7 @@ static void litterbin_iterate_mark(litterbin *bin, void *ptr);
  * @param bin -> The litterbin to use
  * @param value -> The hashed value of the pointer location
  **/
-static void litterbin_zero_out_memory_subtrees(litterbin *bin, size_t value);
+static void litterbin_zero_out_memory_subtrees(struct litterbin *bin, size_t value);
 
 /**
  * @func: litterbin_resize_list_of
@@ -282,7 +277,7 @@ static void litterbin_zero_out_memory_subtrees(litterbin *bin, size_t value);
  * @param bin -> The litterbin to use
  * @return The reallocated list
  **/
-static void *litterbin_resize_list_of(litterbin *bin);
+static void *litterbin_resize_list_of(struct litterbin *bin);
 
 /**
  * @func: litterbin_count_unreachable_pointers
@@ -290,21 +285,21 @@ static void *litterbin_resize_list_of(litterbin *bin);
  * @param bin -> The litterbin to use
  * @return The number of elements
  **/
-static size_t litterbin_count_unreachable_pointers(litterbin *bin);
+static size_t litterbin_count_unreachable_pointers(struct litterbin *bin);
 
 /**
  * @func: litterbin_setup_freelist
  * @desc: Create the list of unreachable elements and increase the count
  * @param bin -> The litterbin to use
  **/
-static void litterbin_setup_freelist(litterbin *bin);
+static void litterbin_setup_freelist(struct litterbin *bin);
 
 /**
  * @func: litterbin_unmark_values_for_collection
  * @desc: Unmark elements for the pending garbage collection
  * @param bin -> The litterbin to use
  **/
-static void litterbin_unmark_values_for_collection(litterbin *bin);
+static void litterbin_unmark_values_for_collection(struct litterbin *bin);
 
 /**
  * @func: litterbin_sweep
@@ -313,7 +308,7 @@ static void litterbin_unmark_values_for_collection(litterbin *bin);
  * 
  * @param bin -> The litterbin to use
  **/
-static void litterbin_sweep(litterbin *bin);
+static void litterbin_sweep(struct litterbin *bin);
 
 
 /**
@@ -328,7 +323,7 @@ static void litterbin_sweep(litterbin *bin);
  * @param bin -> The litterbin to use
  * @return true if the resize is successfull
  **/
-static bool litterbin_decrease_size(litterbin *bin);
+static bool litterbin_decrease_size(struct litterbin *bin);
 
 /**
  * @func: litterbin_increase_size
@@ -336,7 +331,7 @@ static bool litterbin_decrease_size(litterbin *bin);
  * @param bin -> The litterbin to use
  * @return true if the resize is successfull
  **/
-static bool litterbin_increase_size(litterbin *bin);
+static bool litterbin_increase_size(struct litterbin *bin);
 
 /**
  * @func: litterbin_rehash
@@ -347,7 +342,7 @@ static bool litterbin_increase_size(litterbin *bin);
  * @param new_size -> The new size to reallocate
  * @return true if the rehash is successfull
  **/
-static bool litterbin_rehash(litterbin *bin, size_t new_size);
+static bool litterbin_rehash(struct litterbin *bin, size_t new_size);
 
 /**
  * @func: litterbin_validate_item
@@ -361,7 +356,7 @@ static bool litterbin_rehash(litterbin *bin, size_t new_size);
  * @param index -> The index to search
  * @return The position of our pointer in memory
  **/
-static size_t litterbin_validate_item(litterbin *bin, size_t index, size_t id);
+static size_t litterbin_validate_item(struct litterbin *bin, size_t index, size_t id);
 
 
 /**
@@ -371,7 +366,7 @@ static size_t litterbin_validate_item(litterbin *bin, size_t index, size_t id);
  * @param size -> The size of the new pointer we want to add
  * @param root -> The state of the pointer
  **/
-static void litterbin_set(litterbin *bin, void *ptr, size_t size, bool root);
+static void litterbin_set(struct litterbin *bin, void *ptr, size_t size, bool root);
 
 /**
  * @func: litterbin_set_ptr
@@ -383,7 +378,7 @@ static void litterbin_set(litterbin *bin, void *ptr, size_t size, bool root);
  * @param size -> The size of the pointer
  * @param root -> The state of the pointer
  **/
-static void litterbin_set_ptr(litterbin *bin, void *ptr, size_t size, bool root);
+static void litterbin_set_ptr(struct litterbin *bin, void *ptr, size_t size, bool root);
 
 /**
  * @func: litterbin_get
@@ -397,7 +392,7 @@ static void litterbin_set_ptr(litterbin *bin, void *ptr, size_t size, bool root)
  * @param ptr -> The pointer to get
  * @return The litter object containing the pointer
  **/
-static litterbin_litter *litterbin_get(litterbin *bin, void *ptr);
+static struct litterbin_litter *litterbin_get(struct litterbin *bin, void *ptr);
 
 /**
  * @func: litterbin_remove
@@ -405,7 +400,7 @@ static litterbin_litter *litterbin_get(litterbin *bin, void *ptr);
  * @param bin -> The litterbin used
  * @param ptr -> The pointer to remove
  **/
-static void litterbin_remove(litterbin *bin, void *ptr);
+static void litterbin_remove(struct litterbin *bin, void *ptr);
 
 
 

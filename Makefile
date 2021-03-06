@@ -11,7 +11,7 @@ REMOVE_WARNINGS =
 LIBS = -c
 
 INPUT = src/$(NAME)/*.c
-OUTPUT = $(NAME).a
+OUTPUT = $(NAME).so
 
 #TESTFILES = ../src/$(NAME)/*.c
 TESTINPUT = $(NAME).spec.c
@@ -31,7 +31,7 @@ default:
 lib: default
 
 test:
-	cd spec && $(CC) $(OPT) $(VERSION) $(HEADERS) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) $(LIBS) -o $(TESTOUTPUT) $(TESTFILES) $(TESTINPUT)
+	cd spec && $(CC) $(OPT) $(VERSION) $(HEADERS) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) -o $(TESTOUTPUT) $(TESTFILES) $(TESTINPUT)
 	@echo
 	./spec/$(TESTOUTPUT)
 
