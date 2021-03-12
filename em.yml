@@ -3,10 +3,12 @@ version: 0.1.0
 
 dependencies:
 
+dev-dependencies:
+  cSpec: Oblivious-Oblivious/cSpec
+
 license: GPLv3
 
 application: make
 library: make lib
-postinstall: #
 test: make test
 clean: make clean
