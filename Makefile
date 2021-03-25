@@ -27,26 +27,26 @@ make_export:
 
 copy_headers:
 	mkdir export/$(NAME) && mkdir export/$(NAME)/headers
-	cp -r src/$(NAME)/headers/* export/$(NAME)/headers/
-	cp src/$(NAME).h export/
+	cp -r src/$(NAME)/headers/* export/$(NAME)/headers/ >/dev/null 2>&1 || true
+	cp src/$(NAME).h export/ >/dev/null 2>&1 || true
 
 default: make_export
 	$(CC) $(OPT) $(VERSION) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) $(LIBS) -o $(OUTPUT) $(INPUT) $(INPUTFILES) $(DEPS)
-	mv $(OUTPUT) export/
+	mv $(OUTPUT) export/ >/dev/null 2>&1 || true
 
 lib: $(shell uname)
-	cp $(shell find ./libs -name "*.*o") export/
+	cp $(shell find ./libs -name "*.*o") export/ >/dev/null 2>&1 || true
 
 Darwin: make_export copy_headers
 	$(CC) $(OPT) $(VERSION) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) $(OSX_LIBS) $(INPUTFILES)
-	mv *.o export/
+	mv *.o export/ >/dev/null 2>&1 || true
 
 Linux: make_export copy_headers
 	$(CC) $(OPT) $(VERSION) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) $(NIX_LIBS) -o $(OUTPUT).so $(INPUTFILES)
-	mv $(OUTPUT).so export/
+	mv $(OUTPUT).so export/ >/dev/null 2>&1 || true
 
 test:
-	$(CC) $(OPT) $(VERSION) $(HEADERS) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) -Wno-implicit-function-declaration $(LIBS) -o $(TESTOUTPUT) $(DEPS) $(TESTFILES) $(TESTINPUT)
+	mkdir export; $(CC) $(OPT) $(VERSION) $(HEADERS) $(FLAGS) $(WARNINGS) $(REMOVE_WARNINGS) $(UNUSED_WARNINGS) -Wno-implicit-function-declaration $(LIBS) -o $(TESTOUTPUT) $(DEPS) $(TESTFILES) $(TESTINPUT)
 	@echo
 	./$(TESTOUTPUT)
 
