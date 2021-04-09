@@ -8,7 +8,4 @@ dev-dependencies:
 
 license: GPLv3
 
-application: make
-library: make lib
-test: make test
-clean: make clean
+build: #
