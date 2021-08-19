@@ -15,7 +15,7 @@ OUTPUT = a.out
 all: default
 
 default:
-	cd .. && em build lib
+	cd .. && em build lib release
 	$(CC) $(OPT) $(VERSION) $(FLAGS) $(WARNINGS) $(UNUSED_WARNINGS) $(REMOVE_WARNINGS) -o $(OUTPUT) $(INPUT)
 	./$(OUTPUT)
 
