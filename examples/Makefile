@@ -9,7 +9,7 @@ WARNINGS =
 UNUSED_WARNINGS = -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-extra-semi
 REMOVE_WARNINGS =
 
-INPUT = $(NAME).c ../export/*.*o
+INPUT = $(NAME).c $(shell find ../export -name "*.o") $(shell find ../libs -name "*.o")
 OUTPUT = a.out
 
 all: default
