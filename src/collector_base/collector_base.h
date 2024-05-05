@@ -1,17 +1,11 @@
-#ifndef __COLLECTOR_BASE_
-#define __COLLECTOR_BASE_
+#ifndef __COLLECTOR_BASE_H_
+#define __COLLECTOR_BASE_H_
+
+#include "../../libs/EmeraldsBool/export/EmeraldsBool.h"
 
 #include <setjmp.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-/* TODO MAKE INTO A MODULE */
-/** @param bool -> A 'big' enough size to hold both 1 and 0 **/
-#ifndef bool
-  #define bool  unsigned char
-  #define true  1
-  #define false 0
-#endif
 
 /* TODO MAKE INTO A MODULE */
 #define __THROW_THE_TRASH_OUT true
@@ -79,7 +73,7 @@ size_t _64bit_integer_hash(void *ptr);
  * @param id -> A unique hash value that works as an item id
  * @param size -> The size of the element stored as garbage
  **/
-struct collector_garbage {
+struct EmeraldsCollectorGarbage {
   void *ptr;
   bool marked;
   bool root;
@@ -100,9 +94,9 @@ struct collector_garbage {
  * @param bottom_of_stack -> The variable holding the current stack 'esp'
  * @param number_of_unreachable_elements -> The count of items to be deleted
  **/
-struct collector {
-  struct collector_garbage *garbage;
-  struct collector_garbage *list_of_unreachable_elements;
+typedef struct EmeraldsCollector {
+  struct EmeraldsCollectorGarbage *garbage;
+  struct EmeraldsCollectorGarbage *list_of_unreachable_elements;
   size_t gc_size;
   size_t number_of_garbage;
   size_t available_memory_slots;
@@ -110,7 +104,7 @@ struct collector {
   size_t low_memory_bound;
   void *bottom_of_stack;
   size_t number_of_unreachable_elements;
-};
+} EmeraldsCollector;
 
 /**
  * @brief Creates a new collector and initialized the base values
@@ -119,19 +113,19 @@ struct collector {
  * @param gc -> The collector to use
  * @param stack_base -> 'argc' in most cases
  **/
-void collector_new(struct collector *gc, void *stack_base);
+void collector_new(EmeraldsCollector *gc, void *stack_base);
 
 /**
  * @brief Sweeps for the remaining elements and stops the collector
  * @param gc -> The collector to stop
  **/
-void collector_terminate(struct collector *gc);
+void collector_terminate(EmeraldsCollector *gc);
 
 /**
  * @brief Performs a garbage collection on the gc elements
  * @param gc -> The collector to perform a garbage collection on
  **/
-void collector_collect(struct collector *gc);
+void collector_collect(EmeraldsCollector *gc);
 
 
 /**
@@ -140,7 +134,7 @@ void collector_collect(struct collector *gc);
  * @param size -> The size of the memory block to allocate
  * @return The newly create memory
  **/
-void *collector_malloc(struct collector *gc, size_t size);
+void *collector_malloc(EmeraldsCollector *gc, size_t size);
 
 /**
  * @brief Allocates and initializes a memory block, and saves it
@@ -149,7 +143,7 @@ void *collector_malloc(struct collector *gc, size_t size);
  * @param size -> The size of each element
  * @return The newly created memory
  **/
-void *collector_calloc(struct collector *gc, size_t nitems, size_t size);
+void *collector_calloc(EmeraldsCollector *gc, size_t nitems, size_t size);
 
 /**
  * @brief Changes the size of the memory and tries to reallocate the memory
@@ -158,14 +152,14 @@ void *collector_calloc(struct collector *gc, size_t nitems, size_t size);
  * @param new_size -> The new size of the memory block
  * @return The realloced memory block
  **/
-void *collector_realloc(struct collector *gc, void *ptr, size_t new_size);
+void *collector_realloc(EmeraldsCollector *gc, void *ptr, size_t new_size);
 
 /**
  * @brief Deallocates a memory slot and removes it from the collector
  * @param gc -> The collector to use
  * @param ptr -> The pointer to free of memory
  **/
-void collector_free(struct collector *gc, void *ptr);
+void collector_free(EmeraldsCollector *gc, void *ptr);
 
 
 /**
@@ -200,7 +194,7 @@ static void _memcpy(void *dest, void *src, size_t size);
  * @brief Flush all used registers to zero to prepare them for marking
  * @param gc -> The collector to use
  **/
-static void collector_mark_register_memory(struct collector *gc);
+static void collector_mark_register_memory(EmeraldsCollector *gc);
 
 /**
  * @brief Mark all stack values to define reachability
@@ -210,14 +204,14 @@ static void collector_mark_register_memory(struct collector *gc);
  *
  * @param gc -> The collector to use
  **/
-static void collector_mark_volatile_stack(struct collector *gc);
+static void collector_mark_volatile_stack(EmeraldsCollector *gc);
 
 /**
  * @brief Mark all sub pointers under a root value
  * @param gc -> The collector to use
  * @param value -> The index to start iterating from
  **/
-static void collector_mark_gc_garbage(struct collector *gc, size_t value);
+static void collector_mark_gc_garbage(EmeraldsCollector *gc, size_t value);
 
 /**
  * @brief Start the mark phase by first marking root values and sub elements
@@ -225,7 +219,7 @@ static void collector_mark_gc_garbage(struct collector *gc, size_t value);
  *
  * @param gc -> The collector to use
  **/
-static void collector_mark(struct collector *gc);
+static void collector_mark(EmeraldsCollector *gc);
 
 /**
  * @brief Find the stack boundaries and mark all values in between
@@ -234,14 +228,14 @@ static void collector_mark(struct collector *gc);
  *
  * @param gc -> The collector to use
  **/
-static void collector_mark_stack(struct collector *gc);
+static void collector_mark_stack(EmeraldsCollector *gc);
 
 /**
  * @brief Iterate through root values and mark all subsequent nodes
  * @param gc -> The collector to use
  * @param ptr -> The pointer to mark
  **/
-static void collector_iterate_mark(struct collector *gc, void *ptr);
+static void collector_iterate_mark(EmeraldsCollector *gc, void *ptr);
 
 
 /**
@@ -250,33 +244,33 @@ static void collector_iterate_mark(struct collector *gc, void *ptr);
  * @param value -> The hashed value of the pointer location
  **/
 static void
-collector_zero_out_memory_subtrees(struct collector *gc, size_t value);
+collector_zero_out_memory_subtrees(EmeraldsCollector *gc, size_t value);
 
 /**
  * @brief Reallocate the list of elements to be freed
  * @param gc -> The collector to use
  * @return The reallocated list
  **/
-static void *collector_resize_list_of(struct collector *gc);
+static void *collector_resize_list_of(EmeraldsCollector *gc);
 
 /**
  * @brief Check for marked or root elements (those are considered reachable)
  * @param gc -> The collector to use
  * @return The number of elements
  **/
-static size_t collector_count_unreachable_pointers(struct collector *gc);
+static size_t collector_count_unreachable_pointers(EmeraldsCollector *gc);
 
 /**
  * @brief Create the list of unreachable elements and increase the count
  * @param gc -> The collector to use
  **/
-static void collector_setup_freelist(struct collector *gc);
+static void collector_setup_freelist(EmeraldsCollector *gc);
 
 /**
  * @brief Unmark elements for the pending garbage collection
  * @param gc -> The collector to use
  **/
-static void collector_unmark_values_for_collection(struct collector *gc);
+static void collector_unmark_values_for_collection(EmeraldsCollector *gc);
 
 /**
  * @brief Start the sweep phase by unmarking unreachable
@@ -284,7 +278,7 @@ static void collector_unmark_values_for_collection(struct collector *gc);
  *
  * @param gc -> The collector to use
  **/
-static void collector_sweep(struct collector *gc);
+static void collector_sweep(EmeraldsCollector *gc);
 
 
 /**
@@ -298,14 +292,14 @@ static void collector_sweep(struct collector *gc);
  * @param gc -> The collector to use
  * @return true if the resize is successfull
  **/
-static bool collector_decrease_size(struct collector *gc);
+static bool collector_decrease_size(EmeraldsCollector *gc);
 
 /**
  * @brief Increase the size of the collector by a factor of 1.5
  * @param gc -> The collector to use
  * @return true if the resize is successfull
  **/
-static bool collector_increase_size(struct collector *gc);
+static bool collector_increase_size(EmeraldsCollector *gc);
 
 /**
  * @brief Rehash all elements of the gc to a newly allocated space with
@@ -315,7 +309,7 @@ static bool collector_increase_size(struct collector *gc);
  * @param new_size -> The new size to reallocate
  * @return true if the rehash is successfull
  **/
-static bool collector_rehash(struct collector *gc, size_t new_size);
+static bool collector_rehash(EmeraldsCollector *gc, size_t new_size);
 
 /**
  * @brief Validates if the hash of a specific element is positive
@@ -330,7 +324,7 @@ static bool collector_rehash(struct collector *gc, size_t new_size);
  * @return The position of our pointer in memory
  **/
 static size_t
-collector_validate_item(struct collector *gc, size_t index, size_t id);
+collector_validate_item(EmeraldsCollector *gc, size_t index, size_t id);
 
 
 /**
@@ -340,7 +334,7 @@ collector_validate_item(struct collector *gc, size_t index, size_t id);
  * @param root -> The state of the pointer
  **/
 static void
-collector_set(struct collector *gc, void *ptr, size_t size, bool root);
+collector_set(EmeraldsCollector *gc, void *ptr, size_t size, bool root);
 
 /**
  * @brief Add a new value to the collector. A new addition can either be a
@@ -352,7 +346,7 @@ collector_set(struct collector *gc, void *ptr, size_t size, bool root);
  * @param root -> The state of the pointer
  **/
 static void
-collector_set_ptr(struct collector *gc, void *ptr, size_t size, bool root);
+collector_set_ptr(EmeraldsCollector *gc, void *ptr, size_t size, bool root);
 
 /**
  * @brief Get the value of a specific pointer on the collector
@@ -365,15 +359,15 @@ collector_set_ptr(struct collector *gc, void *ptr, size_t size, bool root);
  * @param ptr -> The pointer to get
  * @return The garbage object containing the pointer
  **/
-static struct collector_garbage *
-collector_get(struct collector *gc, void *ptr);
+static struct EmeraldsCollectorGarbage *
+collector_get(EmeraldsCollector *gc, void *ptr);
 
 /**
  * @brief Remove a pointer from the garbage collector
  * @param gc -> The collector used
  * @param ptr -> The pointer to remove
  **/
-static void collector_remove(struct collector *gc, void *ptr);
+static void collector_remove(EmeraldsCollector *gc, void *ptr);
 
 
 

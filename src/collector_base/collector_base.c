@@ -43,7 +43,7 @@ size_t _64bit_integer_hash(void *ptr) {
   return (key >> 3) * 2654435761;
 }
 
-void collector_collect(struct collector *gc) {
+void collector_collect(EmeraldsCollector *gc) {
   collector_mark(gc);
   collector_sweep(gc);
 }
@@ -67,25 +67,25 @@ static void _memset(void *src, char ch, size_t size) {
 }
 
 /* Flush the registers */
-static void collector_mark_register_memory(struct collector *gc) {
+static void collector_mark_register_memory(EmeraldsCollector *gc) {
   jmp_buf regs;
   int point = setjmp(regs);
   _memset(&regs, 0, sizeof(jmp_buf));
 }
 
-static void collector_mark_volatile_stack(struct collector *gc) {
-  void (*volatile mark_stack)(struct collector *) = collector_mark_stack;
+static void collector_mark_volatile_stack(EmeraldsCollector *gc) {
+  void (*volatile mark_stack)(EmeraldsCollector *) = collector_mark_stack;
   mark_stack(gc);
 }
 
-static void collector_mark_gc_garbage(struct collector *gc, size_t value) {
+static void collector_mark_gc_garbage(EmeraldsCollector *gc, size_t value) {
   size_t i;
   for(i = 0; i < gc->garbage[value].size / sizeof(void *); i++) {
     collector_iterate_mark(gc, ((void **)gc->garbage[value].ptr)[i]);
   }
 }
 
-static void collector_mark(struct collector *gc) {
+static void collector_mark(EmeraldsCollector *gc) {
   /* TODO CONCURRENT IMPLEMENTATION */
   /* Now its still a thread local, stop-the-world iterator */
   if(gc->number_of_garbage == 0) {
@@ -112,7 +112,7 @@ static void collector_mark(struct collector *gc) {
   /* collector_mark_volatile_stack(gc); */
 }
 
-static void collector_mark_stack(struct collector *gc) {
+static void collector_mark_stack(EmeraldsCollector *gc) {
   /* Use a variable declaration to find the top of the stack */
   void *stack_top;
   void *esp = &stack_top;
@@ -136,9 +136,10 @@ static void collector_mark_stack(struct collector *gc) {
   }
 }
 
-static void collector_iterate_mark(struct collector *gc, void *ptr) {
+static void collector_iterate_mark(EmeraldsCollector *gc, void *ptr) {
   /* Recursively mark all nested pointers */
-  if((size_t)ptr < gc->low_memory_bound || (size_t)ptr > gc->high_memory_bound) {
+  if((size_t)ptr < gc->low_memory_bound ||
+     (size_t)ptr > gc->high_memory_bound) {
     return;
   }
 
@@ -170,8 +171,8 @@ static void collector_iterate_mark(struct collector *gc, void *ptr) {
 }
 
 static void
-collector_zero_out_memory_subtrees(struct collector *gc, size_t value) {
-  _memset(&gc->garbage[value], 0, sizeof(struct collector_garbage));
+collector_zero_out_memory_subtrees(EmeraldsCollector *gc, size_t value) {
+  _memset(&gc->garbage[value], 0, sizeof(struct EmeraldsCollectorGarbage));
   size_t index = value;
 
   while(true) {
@@ -182,9 +183,11 @@ collector_zero_out_memory_subtrees(struct collector *gc, size_t value) {
       _memcpy(
         &gc->garbage[index],
         &gc->garbage[sub_index],
-        sizeof(struct collector_garbage)
+        sizeof(struct EmeraldsCollectorGarbage)
       );
-      _memset(&gc->garbage[sub_index], 0, sizeof(struct collector_garbage));
+      _memset(
+        &gc->garbage[sub_index], 0, sizeof(struct EmeraldsCollectorGarbage)
+      );
       index = sub_index;
     } else {
       break;
@@ -193,20 +196,19 @@ collector_zero_out_memory_subtrees(struct collector *gc, size_t value) {
   gc->number_of_garbage--;
 }
 
-static void *collector_resize_list_of(struct collector *gc) {
+static void *collector_resize_list_of(EmeraldsCollector *gc) {
   return realloc(
     gc->list_of_unreachable_elements,
-    sizeof(struct collector_garbage) * gc->number_of_unreachable_elements
+    sizeof(struct EmeraldsCollectorGarbage) * gc->number_of_unreachable_elements
   );
 }
 
-static size_t collector_count_unreachable_pointers(struct collector *gc) {
+static size_t collector_count_unreachable_pointers(EmeraldsCollector *gc) {
   size_t counter = 0;
   size_t value;
   for(value = 0; value < gc->gc_size; value++) {
-    if(gc->garbage[value].id == 0
-        || gc->garbage[value].marked
-        || gc->garbage[value].root){
+    if(gc->garbage[value].id == 0 || gc->garbage[value].marked ||
+       gc->garbage[value].root) {
       continue;
     }
     counter++;
@@ -214,13 +216,12 @@ static size_t collector_count_unreachable_pointers(struct collector *gc) {
   return counter;
 }
 
-static void collector_setup_freelist(struct collector *gc) {
+static void collector_setup_freelist(EmeraldsCollector *gc) {
   size_t free_index = 0;
   size_t value;
   for(value = 0; value < gc->gc_size; value++) {
-    if(gc->garbage[value].id == 0
-        || gc->garbage[value].marked
-        || gc->garbage[value].root){
+    if(gc->garbage[value].id == 0 || gc->garbage[value].marked ||
+       gc->garbage[value].root) {
       continue;
     }
 
@@ -230,7 +231,7 @@ static void collector_setup_freelist(struct collector *gc) {
   }
 }
 
-static void collector_unmark_values_for_collection(struct collector *gc) {
+static void collector_unmark_values_for_collection(EmeraldsCollector *gc) {
   size_t value;
   for(value = 0; value < gc->gc_size; value++) {
     if(gc->garbage[value].id == 0) {
@@ -242,7 +243,7 @@ static void collector_unmark_values_for_collection(struct collector *gc) {
   }
 }
 
-static void collector_free_unmarked_values(struct collector *gc) {
+static void collector_free_unmarked_values(EmeraldsCollector *gc) {
   size_t value;
   for(value = 0; value < gc->number_of_unreachable_elements; value++) {
     if(gc->list_of_unreachable_elements[value].ptr) {
@@ -252,13 +253,12 @@ static void collector_free_unmarked_values(struct collector *gc) {
 }
 
 /* Reallocate the freelist from the previous sweep, reset the freenum */
-static void collector_sweep(struct collector *gc) {
+static void collector_sweep(EmeraldsCollector *gc) {
   if(gc->number_of_garbage == 0) {
     return;
   }
-  gc->number_of_unreachable_elements =
-    collector_count_unreachable_pointers(gc);
-  gc->list_of_unreachable_elements = collector_resize_list_of(gc);
+  gc->number_of_unreachable_elements = collector_count_unreachable_pointers(gc);
+  gc->list_of_unreachable_elements   = collector_resize_list_of(gc);
   if(gc->list_of_unreachable_elements == NULL) {
     return;
   }
@@ -273,7 +273,7 @@ static void collector_sweep(struct collector *gc) {
   gc->number_of_unreachable_elements = 0;
 }
 
-static bool collector_decrease_size(struct collector *gc) {
+static bool collector_decrease_size(EmeraldsCollector *gc) {
   gc->available_memory_slots =
     gc->number_of_garbage + gc->number_of_garbage / 1.5 + 1;
   size_t new_size = (size_t)((double)(gc->number_of_garbage + 1) * 1.5);
@@ -282,24 +282,24 @@ static bool collector_decrease_size(struct collector *gc) {
                                                : true;
 }
 
-static bool collector_increase_size(struct collector *gc) {
+static bool collector_increase_size(EmeraldsCollector *gc) {
   size_t new_size = (size_t)((double)(gc->number_of_garbage + 1) * 1.5);
   size_t old_size = gc->gc_size;
   return (old_size * 1.5 < new_size) ? collector_rehash(gc, new_size) : true;
 }
 
-static bool collector_rehash(struct collector *gc, size_t new_size) {
+static bool collector_rehash(EmeraldsCollector *gc, size_t new_size) {
   /* Rehash all values of the collector to a new bigger sized one */
-  struct collector_garbage *old_items = gc->garbage;
-  size_t old_size                     = gc->gc_size;
+  struct EmeraldsCollectorGarbage *old_items = gc->garbage;
+  size_t old_size                            = gc->gc_size;
 
   gc->gc_size = new_size;
-  gc->garbage  = calloc(gc->gc_size, sizeof(struct collector_garbage));
+  gc->garbage = calloc(gc->gc_size, sizeof(struct EmeraldsCollectorGarbage));
 
   if(gc->garbage == NULL) {
     /* In case the allocation fails, we restore the items */
     gc->gc_size = old_size;
-    gc->garbage  = old_items;
+    gc->garbage = old_items;
     return false;
   }
 
@@ -317,7 +317,7 @@ static bool collector_rehash(struct collector *gc, size_t new_size) {
 }
 
 static size_t
-collector_validate_item(struct collector *gc, size_t index, size_t id) {
+collector_validate_item(EmeraldsCollector *gc, size_t index, size_t id) {
   size_t value = index - (id - 1);
   if(value < 0) {
     return value + gc->gc_size;
@@ -326,21 +326,20 @@ collector_validate_item(struct collector *gc, size_t index, size_t id) {
 }
 
 static void
-collector_set(struct collector *gc, void *ptr, size_t size, bool root) {
+collector_set(EmeraldsCollector *gc, void *ptr, size_t size, bool root) {
   /* Increase the total items */
   gc->number_of_garbage++;
 
   /* Fix the max and min sizes for the pointer */
   gc->high_memory_bound = ((size_t)ptr) + size > gc->high_memory_bound
-                             ? ((size_t)ptr) + size
-                             : gc->high_memory_bound;
+                            ? ((size_t)ptr) + size
+                            : gc->high_memory_bound;
 
-  gc->low_memory_bound = ((size_t)ptr) < gc->low_memory_bound
-                            ? ((size_t)ptr)
-                            : gc->low_memory_bound;
+  gc->low_memory_bound =
+    ((size_t)ptr) < gc->low_memory_bound ? ((size_t)ptr) : gc->low_memory_bound;
 
   if(collector_increase_size(gc)) {
-    /*  Add to the list and run the struct collector */
+    /*  Add to the list and run the EmeraldsCollector */
     collector_set_ptr(gc, ptr, size, root);
 
     if(gc->number_of_garbage > gc->available_memory_slots) {
@@ -354,8 +353,8 @@ collector_set(struct collector *gc, void *ptr, size_t size, bool root) {
 }
 
 static void
-collector_set_ptr(struct collector *gc, void *ptr, size_t size, bool root) {
-  struct collector_garbage item;
+collector_set_ptr(EmeraldsCollector *gc, void *ptr, size_t size, bool root) {
+  struct EmeraldsCollectorGarbage item;
   size_t value = collector_hash(ptr) % gc->gc_size;
   size_t index = 0;
 
@@ -378,18 +377,18 @@ collector_set_ptr(struct collector *gc, void *ptr, size_t size, bool root) {
 
     size_t ptr_location = collector_validate_item(gc, value, id);
     if(index >= ptr_location) {
-      struct collector_garbage temp = gc->garbage[value];
-      gc->garbage[value]           = item;
-      item                          = temp;
-      index                         = ptr_location;
+      struct EmeraldsCollectorGarbage temp = gc->garbage[value];
+      gc->garbage[value]                   = item;
+      item                                 = temp;
+      index                                = ptr_location;
     }
     value = (value + 1) % gc->gc_size;
     index++;
   }
 }
 
-static struct collector_garbage *
-collector_get(struct collector *gc, void *ptr) {
+static struct EmeraldsCollectorGarbage *
+collector_get(EmeraldsCollector *gc, void *ptr) {
   size_t value = collector_hash(ptr) % gc->gc_size;
   size_t index = 0;
 
@@ -409,7 +408,7 @@ collector_get(struct collector *gc, void *ptr) {
   return NULL;
 }
 
-static void collector_remove(struct collector *gc, void *ptr) {
+static void collector_remove(EmeraldsCollector *gc, void *ptr) {
   if(gc->gc_size == 0) {
     return;
   }
@@ -429,7 +428,7 @@ static void collector_remove(struct collector *gc, void *ptr) {
       return;
     }
     if(gc->garbage[value].ptr == ptr) {
-      _memset(&gc->garbage[value], 0, sizeof(struct collector_garbage));
+      _memset(&gc->garbage[value], 0, sizeof(struct EmeraldsCollectorGarbage));
       index = value;
 
       while(true) {
@@ -440,10 +439,10 @@ static void collector_remove(struct collector *gc, void *ptr) {
           _memcpy(
             &gc->garbage[index],
             &gc->garbage[sub_index],
-            sizeof(struct collector_garbage)
+            sizeof(struct EmeraldsCollectorGarbage)
           );
           _memset(
-            &gc->garbage[sub_index], 0, sizeof(struct collector_garbage)
+            &gc->garbage[sub_index], 0, sizeof(struct EmeraldsCollectorGarbage)
           );
           index = sub_index;
         } else {
@@ -461,10 +460,10 @@ static void collector_remove(struct collector *gc, void *ptr) {
   collector_decrease_size(gc);
 }
 
-void collector_new(struct collector *gc, void *stack_base) {
+void collector_new(EmeraldsCollector *gc, void *stack_base) {
   gc->bottom_of_stack                = stack_base;
   gc->number_of_garbage              = 0;
-  gc->gc_size                       = 0;
+  gc->gc_size                        = 0;
   gc->available_memory_slots         = 0;
   gc->high_memory_bound              = 0;
   gc->low_memory_bound               = SIZE_MAX;
@@ -473,13 +472,13 @@ void collector_new(struct collector *gc, void *stack_base) {
   gc->number_of_unreachable_elements = 0;
 }
 
-void collector_terminate(struct collector *gc) {
+void collector_terminate(EmeraldsCollector *gc) {
   collector_sweep(gc);
   free(gc->garbage);
   free(gc->list_of_unreachable_elements);
 }
 
-void *collector_malloc(struct collector *gc, size_t size) {
+void *collector_malloc(EmeraldsCollector *gc, size_t size) {
   int state = 0;
   void *ptr = malloc(size);
   if(ptr != NULL) {
@@ -488,7 +487,7 @@ void *collector_malloc(struct collector *gc, size_t size) {
   return ptr;
 }
 
-void *collector_calloc(struct collector *gc, size_t nitems, size_t size) {
+void *collector_calloc(EmeraldsCollector *gc, size_t nitems, size_t size) {
   int state = 0;
   void *ptr = calloc(nitems, size);
   if(ptr != NULL) {
@@ -497,9 +496,9 @@ void *collector_calloc(struct collector *gc, size_t nitems, size_t size) {
   return ptr;
 }
 
-void *collector_realloc(struct collector *gc, void *ptr, size_t new_size) {
+void *collector_realloc(EmeraldsCollector *gc, void *ptr, size_t new_size) {
   /* Reallocate memory for the new pointer */
-  struct collector_garbage *item_to_realloc;
+  struct EmeraldsCollectorGarbage *item_to_realloc;
   void *new_ptr = realloc(ptr, new_size);
 
   if(new_ptr == NULL) {
@@ -527,8 +526,8 @@ void *collector_realloc(struct collector *gc, void *ptr, size_t new_size) {
   return NULL;
 }
 
-void collector_free(struct collector *gc, void *ptr) {
-  struct collector_garbage *ptr_to_free = collector_get(gc, ptr);
+void collector_free(EmeraldsCollector *gc, void *ptr) {
+  struct EmeraldsCollectorGarbage *ptr_to_free = collector_get(gc, ptr);
   if(ptr_to_free) {
     free(ptr);
     collector_remove(gc, ptr);

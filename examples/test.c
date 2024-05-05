@@ -1,11 +1,11 @@
-#include "../export/Collector.h" /* IWYU pragma: keep */
+#include "../export/EmeraldsCollector.h" /* IWYU pragma: keep */
 
 #include <stdio.h>
 
 /* 'gc' is the global element used to save stuff */
 /* We declare it out of the users scope so that we dont need to
     pass it as a parameter due to it being sort of a singleton */
-struct collector gc;
+EmeraldsCollector gc;
 
 int call_method(int *arr) {
   int i;
