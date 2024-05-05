@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __COLLECTOR_H_
-#define __COLLECTOR_H_
+#ifndef __EMERALDSCOLLECTOR_H_
+#define __EMERALDSCOLLECTOR_H_
 
 #include "collector_base/collector_base.h"
 
