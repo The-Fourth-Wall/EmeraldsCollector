@@ -4,7 +4,7 @@
   "version": "0.1.0",
 
   "dependencies": {
-    "EmeraldsBool": "Oblivious-Oblivious/EmeraldsBool"
+    "EmeraldsBool": "The-Fourth-Wall/EmeraldsBool"
   },
 
   "dev-dependencies": {
