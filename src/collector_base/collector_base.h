@@ -161,17 +161,6 @@ void *collector_realloc(EmeraldsCollector *gc, void *ptr, size_t new_size);
  **/
 void collector_free(EmeraldsCollector *gc, void *ptr);
 
-
-/**
- * @brief Performs a defined hash operation to evaluate
- *          a unique id for a memory location
- *
- * @param ptr -> The pointer to hash
- * @return The hash we created out of our pointer
- **/
-static size_t collector_hash(void *ptr);
-
-
 /**
  * @brief An equivalent replacement of the standard 'memset'
  *          for setting bytes to a char ptr

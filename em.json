@@ -16,25 +16,22 @@
   "compile-flags": {
     "cc": "clang",
     "debug": {
-      "opt": "-Og -g",
+      "opt": "-Og",
       "version": "-std=c89",
-      "flags": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic",
-      "warnings": "-Wno-int-conversion -Wno-incompatible-pointer-types",
-      "libs": ""
+      "flags": "-g -fsanitize=address",
+      "warnings": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic"
     },
     "release": {
       "opt": "-O2",
       "version": "-std=c2x",
       "flags": "",
-      "warnings": "-Wno-int-conversion",
-      "libs": ""
+      "warnings": ""
     },
     "test": {
-      "opt": "-O2",
-      "version": "-std=c2x",
-      "flags": "",
-      "warnings": "-Wno-int-conversion -Wno-implicit-function-declaration -Wno-incompatible-pointer-types",
-      "libs": ""
+      "opt": "-Og",
+      "version": "-std=c89",
+      "flags": "-g -fsanitize=address",
+      "warnings": ""
     }
   },
 

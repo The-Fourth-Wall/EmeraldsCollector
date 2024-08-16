@@ -18,11 +18,14 @@ int call_method(int *arr) {
 
 int main(void) {
   void *dummy = NULL;
+  int *arr    = NULL;
+  int value;
+
   collector_new(&gc, dummy);
 
-  int *arr = (int *)mmalloc(sizeof(int) * 10);
+  arr = (int *)mmalloc(sizeof(int) * 10);
 
-  int value = call_method(arr);
+  value = call_method(arr);
   printf("value: %d\n", value);
 
   collector_terminate(&gc);

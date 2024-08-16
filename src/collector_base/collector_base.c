@@ -69,8 +69,9 @@ static void _memset(void *src, char ch, size_t size) {
 /* Flush the registers */
 static void collector_mark_register_memory(EmeraldsCollector *gc) {
   jmp_buf regs;
-  int point = setjmp(regs);
+  setjmp(regs);
   _memset(&regs, 0, sizeof(jmp_buf));
+  (void)gc;
 }
 
 static void collector_mark_volatile_stack(EmeraldsCollector *gc) {
@@ -88,11 +89,12 @@ static void collector_mark_gc_garbage(EmeraldsCollector *gc, size_t value) {
 static void collector_mark(EmeraldsCollector *gc) {
   /* TODO CONCURRENT IMPLEMENTATION */
   /* Now its still a thread local, stop-the-world iterator */
+  size_t value;
+
   if(gc->number_of_garbage == 0) {
     return;
   }
 
-  size_t value;
   for(value = 0; value < gc->gc_size; value++) {
     if(gc->garbage[value].id == 0) {
       continue;
@@ -138,13 +140,16 @@ static void collector_mark_stack(EmeraldsCollector *gc) {
 
 static void collector_iterate_mark(EmeraldsCollector *gc, void *ptr) {
   /* Recursively mark all nested pointers */
+  size_t index;
+  size_t value;
+
   if((size_t)ptr < gc->low_memory_bound ||
      (size_t)ptr > gc->high_memory_bound) {
     return;
   }
 
-  size_t value = collector_hash(ptr) % gc->gc_size;
-  size_t index = 0;
+  index = 0;
+  value = collector_hash(ptr) % gc->gc_size;
 
   while(true) {
     size_t id = gc->garbage[value].id;
@@ -172,8 +177,10 @@ static void collector_iterate_mark(EmeraldsCollector *gc, void *ptr) {
 
 static void
 collector_zero_out_memory_subtrees(EmeraldsCollector *gc, size_t value) {
+  size_t index;
+
   _memset(&gc->garbage[value], 0, sizeof(struct EmeraldsCollectorGarbage));
-  size_t index = value;
+  index = value;
 
   while(true) {
     size_t sub_index = (index + 1) % gc->gc_size;
@@ -274,10 +281,13 @@ static void collector_sweep(EmeraldsCollector *gc) {
 }
 
 static bool collector_decrease_size(EmeraldsCollector *gc) {
+  size_t new_size;
+  size_t old_size;
+
   gc->available_memory_slots =
     gc->number_of_garbage + gc->number_of_garbage / 1.5 + 1;
-  size_t new_size = (size_t)((double)(gc->number_of_garbage + 1) * 1.5);
-  size_t old_size = gc->gc_size;
+  new_size = (size_t)((double)(gc->number_of_garbage + 1) * 1.5);
+  old_size = gc->gc_size;
   return ((size_t)(old_size / 1.5) < new_size) ? collector_rehash(gc, new_size)
                                                : true;
 }
@@ -290,6 +300,7 @@ static bool collector_increase_size(EmeraldsCollector *gc) {
 
 static bool collector_rehash(EmeraldsCollector *gc, size_t new_size) {
   /* Rehash all values of the collector to a new bigger sized one */
+  size_t value;
   struct EmeraldsCollectorGarbage *old_items = gc->garbage;
   size_t old_size                            = gc->gc_size;
 
@@ -303,7 +314,6 @@ static bool collector_rehash(EmeraldsCollector *gc, size_t new_size) {
     return false;
   }
 
-  size_t value;
   for(value = 0; value < old_size; value++) {
     if(old_items[value].id != 0) {
       collector_set_ptr(
@@ -366,6 +376,7 @@ collector_set_ptr(EmeraldsCollector *gc, void *ptr, size_t size, bool root) {
 
   /* Find the uniquely ided item and add it to the gc list */
   while(true) {
+    size_t ptr_location;
     size_t id = gc->garbage[value].id;
     if(id == 0) {
       gc->garbage[value] = item;
@@ -375,7 +386,7 @@ collector_set_ptr(EmeraldsCollector *gc, void *ptr, size_t size, bool root) {
       return;
     }
 
-    size_t ptr_location = collector_validate_item(gc, value, id);
+    ptr_location = collector_validate_item(gc, value, id);
     if(index >= ptr_location) {
       struct EmeraldsCollectorGarbage temp = gc->garbage[value];
       gc->garbage[value]                   = item;
@@ -409,19 +420,22 @@ collector_get(EmeraldsCollector *gc, void *ptr) {
 }
 
 static void collector_remove(EmeraldsCollector *gc, void *ptr) {
+  size_t i;
+  size_t value;
+  size_t index;
+
   if(gc->gc_size == 0) {
     return;
   }
 
-  size_t i;
   for(i = 0; i < gc->number_of_unreachable_elements; i++) {
     if(gc->list_of_unreachable_elements[i].ptr == ptr) {
       gc->list_of_unreachable_elements[i].ptr = NULL;
     }
   }
 
-  size_t value = collector_hash(ptr) % gc->gc_size;
-  size_t index = 0;
+  value = collector_hash(ptr) % gc->gc_size;
+  index = 0;
   while(true) {
     size_t id = gc->garbage[value].id;
     if(id == 0 || collector_validate_item(gc, value, id) < index) {
