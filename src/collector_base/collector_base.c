@@ -111,7 +111,7 @@ static void collector_mark(EmeraldsCollector *gc) {
 
   collector_mark_register_memory(gc);
   /* TODO MEMORY LAYOUT FUCKED -> FIX */
-  /* collector_mark_volatile_stack(gc); */
+  collector_mark_volatile_stack(gc);
 }
 
 static void collector_mark_stack(EmeraldsCollector *gc) {
